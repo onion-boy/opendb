@@ -6,7 +6,7 @@ An open-source database
 - Use `migration.sql` to create a database called `buildingDB` with the schemas/tables the API expects.
     + If you want to copy the database you can run (or similar for windows)
         ```bash
-        psql -h localhost -U USERNAME -a -f migration.sql
+        psql -h HOSTNAME -U USERNAME -a -f migration.sql
         ```
     + The script assumes that you *already* have a user in your Postgres Database named `buildingDB` with superuser privileges. If you would like to change that you can always edit the `migration.sql` file with your own username/privileges.
     + PgAdmin generates the script so it may not be perfect; please report any issues.
