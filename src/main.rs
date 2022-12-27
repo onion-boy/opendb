@@ -61,7 +61,7 @@ async fn main() {
         .fallback(unknown_landing)
         .route("/", get(default_landing));
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 80));
+    let addr = SocketAddr::from(([127, 0, 0, 1], 8000));
     pscope!("info", "server listening on {}", addr);
     pscope!("info", "database connection active",);
 

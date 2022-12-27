@@ -23,7 +23,7 @@ SET row_security = off;
 -- Name: openDB; Type: DATABASE; Schema: -; Owner: openDB
 --
 
-CREATE DATABASE "openDB" WITH TEMPLATE = template0 ENCODING = 'UTF8' LOCALE = 'English_United States.1252';
+CREATE DATABASE "openDB" WITH TEMPLATE = template0 ENCODING = 'UTF8';
 
 
 ALTER DATABASE "openDB" OWNER TO "openDB";
