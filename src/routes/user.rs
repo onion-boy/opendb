@@ -1,4 +1,4 @@
-use super::fallbacks::{error_landing, default_error_landing};
+use super::fallbacks::error_landing;
 use axum::{
     extract::{Query, State},
     http::StatusCode,
@@ -6,10 +6,8 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use sqlx::{
-    postgres::{PgArguments, PgPool},
-    query::QueryAs,
+    postgres::PgPool,
     types::chrono::{self, NaiveDate},
-    Postgres,
 };
 
 #[derive(Deserialize)]
@@ -21,17 +19,16 @@ pub struct CreateUserForm {
 
 #[derive(Serialize)]
 pub struct UserId {
-    user_id: i32
+    user_id: String,
 }
 
-#[derive(Serialize)]
-#[derive(sqlx::Type)]
+#[derive(Serialize, sqlx::Type)]
 #[sqlx(type_name = "composite_user")]
 pub struct User {
-    user_id: i32,
+    user_id: String,
     email: String,
     username: String,
-    created: NaiveDate
+    created: NaiveDate,
 }
 
 #[derive(Deserialize)]
@@ -48,7 +45,7 @@ pub async fn create_new_user(
     let created = chrono::Utc::now().date_naive();
 
     let new_user = sqlx::query_as!(UserId,
-        "INSERT INTO users.basic (full_name, email, username, created) VALUES ($1::varchar(256), $2::varchar(256), $3::varchar(15), $4::date) RETURNING user_id",
+        "INSERT INTO \"users\".\"basic\" (full_name, email, username, created) VALUES ($1::varchar(256), $2::varchar(256), $3::varchar(15), $4::date) RETURNING \"user_id\"",
         form.full_name, form.email, form.username, created)
         .fetch_one(&pool)
         .await;
@@ -83,23 +80,13 @@ pub async fn lookup_user(
     };
 
     if let Some(detail_name) = detail {
-        let query = format!("SELECT (user_id,email,username,created)::composite_user FROM users.basic WHERE {} = $1", detail_name);
-        let result: QueryAs<Postgres, (User,), PgArguments> = sqlx::query_as(&query);
-        let bound;
-
-        if detail_name == "user_id" {
-            bound = result.bind(value.unwrap().parse::<i32>().unwrap());
-        } else {
-            bound = result.bind(value.unwrap());
-        }
-
-        // |_| error_landing("user not found", StatusCode::NOT_FOUND, "warning")
-
-        bound
+        let query = format!("SELECT (user_id,email,username,created)::users.composite_user FROM \"users\".\"basic\" WHERE \"{}\" = $1", detail_name);
+        sqlx::query_as(&query)
+            .bind(value.unwrap())
             .fetch_one(&pool)
             .await
-            .map_err(default_error_landing)
-            .map(|u| Json(u.0))
+            .map_err(|_| error_landing("user not found", StatusCode::NOT_FOUND, "warn"))
+            .map(|u: (User,)| Json(u.0))
     } else {
         Err(error_landing(
             "malformed request",

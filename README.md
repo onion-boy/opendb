@@ -11,4 +11,5 @@ An open-source database
     + The script assumes that you *already* have a user in your Postgres Database named `openDB` with superuser privileges. If you would like to change that you can always edit the `migration.sql` file with your own username/privileges.
     + A database called `openDB` will be created, make sure this will not conflict.
     + PgAdmin generates the script so it may not be perfect; please report any issues.
+    + When you save your own backup during a pull request, make sure to take out the `LOCALE` header in the `CREATE DATABASE` statement, because it creates errors on old versions.
 - The API should work correctly without any other configuration steps
