@@ -5,7 +5,7 @@
 -- Dumped from database version 14.4
 -- Dumped by pg_dump version 14.4
 
--- Started on 2022-12-26 23:33:55
+-- Started on 2022-12-27 11:57:42
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -19,7 +19,7 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- TOC entry 3313 (class 1262 OID 32833)
+-- TOC entry 3321 (class 1262 OID 32833)
 -- Name: openDB; Type: DATABASE; Schema: -; Owner: openDB
 --
 
@@ -51,9 +51,39 @@ CREATE SCHEMA users;
 
 ALTER SCHEMA users OWNER TO "openDB";
 
+--
+-- TOC entry 829 (class 1247 OID 32852)
+-- Name: composite_user; Type: TYPE; Schema: users; Owner: openDB
+--
+
+CREATE TYPE users.composite_user AS (
+	user_id integer,
+	email character varying(256),
+	username character varying(256),
+	created date
+);
+
+
+ALTER TYPE users.composite_user OWNER TO "openDB";
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
+
+--
+-- TOC entry 213 (class 1259 OID 32853)
+-- Name: composite_user; Type: TABLE; Schema: public; Owner: openDB
+--
+
+CREATE TABLE public.composite_user (
+    user_id integer,
+    email character varying(256),
+    username character varying(15),
+    created date
+);
+
+
+ALTER TABLE public.composite_user OWNER TO "openDB";
 
 --
 -- TOC entry 210 (class 1259 OID 32835)
@@ -88,7 +118,7 @@ ALTER TABLE users.basic ALTER COLUMN user_id ADD GENERATED ALWAYS AS IDENTITY (
 
 
 --
--- TOC entry 3166 (class 2606 OID 32842)
+-- TOC entry 3174 (class 2606 OID 32842)
 -- Name: basic basic_pkey; Type: CONSTRAINT; Schema: users; Owner: openDB
 --
 
@@ -97,7 +127,7 @@ ALTER TABLE ONLY users.basic
 
 
 --
--- TOC entry 3168 (class 2606 OID 32846)
+-- TOC entry 3176 (class 2606 OID 32846)
 -- Name: basic username_unique; Type: CONSTRAINT; Schema: users; Owner: openDB
 --
 
@@ -106,8 +136,8 @@ ALTER TABLE ONLY users.basic
 
 
 --
--- TOC entry 3314 (class 0 OID 0)
--- Dependencies: 3313
+-- TOC entry 3322 (class 0 OID 0)
+-- Dependencies: 3321
 -- Name: DATABASE "openDB"; Type: ACL; Schema: -; Owner: openDB
 --
 
@@ -116,7 +146,7 @@ GRANT CREATE,CONNECT ON DATABASE "openDB" TO "openDB";
 GRANT TEMPORARY ON DATABASE "openDB" TO "openDB" WITH GRANT OPTION;
 
 
--- Completed on 2022-12-26 23:33:55
+-- Completed on 2022-12-27 11:57:43
 
 --
 -- PostgreSQL database dump complete

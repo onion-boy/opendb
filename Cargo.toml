@@ -5,7 +5,8 @@ edition = "2021"
 
 [dependencies]
 axum = "0.6.1"
-sqlx = { version = "0.6", features = [ "runtime-tokio-rustls", "postgres", "uuid", "chrono" ] }
-tokio = { version = "1", features = ["full"] }
+sqlx = { version = "0.6", features = [ "runtime-tokio-rustls", "postgres", "chrono" ] }
+tokio = { version = "1", features = [ "full" ] }
 dotenv = "0.15.0"
 serde = "1.0.151"
+chrono = { version = "0.4.23", features = [ "serde" ] }

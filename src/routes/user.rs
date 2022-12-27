@@ -1,11 +1,16 @@
-use super::fallbacks::error_landing;
+use super::fallbacks::{error_landing, default_error_landing};
 use axum::{
     extract::{Query, State},
     http::StatusCode,
     Form, Json,
 };
 use serde::{Deserialize, Serialize};
-use sqlx::{postgres::PgPool, types::chrono, Error};
+use sqlx::{
+    postgres::{PgArguments, PgPool},
+    query::QueryAs,
+    types::chrono::{self, NaiveDate},
+    Postgres,
+};
 
 #[derive(Deserialize)]
 pub struct CreateUserForm {
@@ -15,26 +20,34 @@ pub struct CreateUserForm {
 }
 
 #[derive(Serialize)]
-pub struct LookupUser {
-    user_id: i32,
+pub struct UserId {
+    user_id: i32
 }
+
+#[derive(Serialize)]
 #[derive(sqlx::Type)]
-#[sqlx(transparent)]
-pub struct UserId(i32);
+#[sqlx(type_name = "composite_user")]
+pub struct User {
+    user_id: i32,
+    email: String,
+    username: String,
+    created: NaiveDate
+}
 
 #[derive(Deserialize)]
 pub struct LookupUserForm {
     username: Option<String>,
     email: Option<String>,
+    user_id: Option<String>,
 }
 
 pub async fn create_new_user(
     State(pool): State<PgPool>,
     form: Form<CreateUserForm>,
-) -> Result<Json<LookupUser>, (StatusCode, String)> {
+) -> Result<Json<UserId>, (StatusCode, String)> {
     let created = chrono::Utc::now().date_naive();
 
-    let new_user = sqlx::query_as!(LookupUser,
+    let new_user = sqlx::query_as!(UserId,
         "INSERT INTO users.basic (full_name, email, username, created) VALUES ($1::varchar(256), $2::varchar(256), $3::varchar(15), $4::date) RETURNING user_id",
         form.full_name, form.email, form.username, created)
         .fetch_one(&pool)
@@ -50,10 +63,10 @@ pub async fn create_new_user(
     }
 }
 
-pub async fn lookup_username_or_email(
+pub async fn lookup_user(
     State(pool): State<PgPool>,
     query: Query<LookupUserForm>,
-) -> Result<Json<LookupUser>, (StatusCode, String)> {
+) -> Result<Json<User>, (StatusCode, String)> {
     let detail;
     let value = if let Some(username) = query.username.clone() {
         detail = Some("username");
@@ -61,21 +74,32 @@ pub async fn lookup_username_or_email(
     } else if let Some(email) = query.email.clone() {
         detail = Some("email");
         Some(email)
+    } else if let Some(user_id) = query.user_id.clone() {
+        detail = Some("user_id");
+        Some(user_id)
     } else {
         detail = None;
         None
     };
 
     if let Some(detail_name) = detail {
-        let query = format!("SELECT user_id FROM users.basic WHERE {} = $1", detail_name);
-        let result: Result<(UserId,), Error> = sqlx::query_as(&query)
-            .bind(value.unwrap())
-            .fetch_one(&pool)
-            .await;
+        let query = format!("SELECT (user_id,email,username,created)::composite_user FROM users.basic WHERE {} = $1", detail_name);
+        let result: QueryAs<Postgres, (User,), PgArguments> = sqlx::query_as(&query);
+        let bound;
 
-        result
-            .map_err(|_| error_landing("user not found", StatusCode::NOT_FOUND, "warning"))
-            .map(|u| Json(LookupUser { user_id: u.0 .0 }))
+        if detail_name == "user_id" {
+            bound = result.bind(value.unwrap().parse::<i32>().unwrap());
+        } else {
+            bound = result.bind(value.unwrap());
+        }
+
+        // |_| error_landing("user not found", StatusCode::NOT_FOUND, "warning")
+
+        bound
+            .fetch_one(&pool)
+            .await
+            .map_err(default_error_landing)
+            .map(|u| Json(u.0))
     } else {
         Err(error_landing(
             "malformed request",
