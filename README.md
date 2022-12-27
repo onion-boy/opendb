@@ -9,5 +9,6 @@ An open-source database
         psql -h HOSTNAME -U USERNAME -a -f migration.sql
         ```
     + The script assumes that you *already* have a user in your Postgres Database named `openDB` with superuser privileges. If you would like to change that you can always edit the `migration.sql` file with your own username/privileges.
+    + A database called `openDB` will be created, make sure this will not conflict.
     + PgAdmin generates the script so it may not be perfect; please report any issues.
 - The API should work correctly without any other configuration steps

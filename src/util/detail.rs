@@ -8,6 +8,6 @@ macro_rules! scope {
 #[macro_export]
 macro_rules! pscope {
     ($detail:expr, $print_str:expr, $( $arg:expr ),*) => {
-        println!("{}", scope!($detail, $print_str, $( $arg ),*))
+        println!("{}", crate::scope!($detail, $print_str, $( $arg ),*))
     }
 }

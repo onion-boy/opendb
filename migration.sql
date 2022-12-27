@@ -5,7 +5,7 @@
 -- Dumped from database version 14.4
 -- Dumped by pg_dump version 14.4
 
--- Started on 2022-12-26 23:24:15
+-- Started on 2022-12-26 23:33:55
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -19,7 +19,7 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- TOC entry 3311 (class 1262 OID 32833)
+-- TOC entry 3313 (class 1262 OID 32833)
 -- Name: openDB; Type: DATABASE; Schema: -; Owner: openDB
 --
 
@@ -97,8 +97,17 @@ ALTER TABLE ONLY users.basic
 
 
 --
--- TOC entry 3312 (class 0 OID 0)
--- Dependencies: 3311
+-- TOC entry 3168 (class 2606 OID 32846)
+-- Name: basic username_unique; Type: CONSTRAINT; Schema: users; Owner: openDB
+--
+
+ALTER TABLE ONLY users.basic
+    ADD CONSTRAINT username_unique UNIQUE (username, email);
+
+
+--
+-- TOC entry 3314 (class 0 OID 0)
+-- Dependencies: 3313
 -- Name: DATABASE "openDB"; Type: ACL; Schema: -; Owner: openDB
 --
 
@@ -107,7 +116,7 @@ GRANT CREATE,CONNECT ON DATABASE "openDB" TO "openDB";
 GRANT TEMPORARY ON DATABASE "openDB" TO "openDB" WITH GRANT OPTION;
 
 
--- Completed on 2022-12-26 23:24:15
+-- Completed on 2022-12-26 23:33:55
 
 --
 -- PostgreSQL database dump complete
