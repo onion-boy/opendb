@@ -32,7 +32,7 @@ pub struct User {
 }
 
 #[derive(Deserialize)]
-pub struct LookupUserForm {
+pub struct LookupUserQuery {
     username: Option<String>,
     email: Option<String>,
     id: Option<String>,
@@ -62,7 +62,7 @@ pub async fn create_new_user(
 
 pub async fn lookup_user(
     State(pool): State<PgPool>,
-    query: Query<LookupUserForm>,
+    query: Query<LookupUserQuery>,
 ) -> Result<Json<User>, (StatusCode, String)> {
     let detail;
     let value = if let Some(username) = query.username.clone() {
@@ -81,12 +81,19 @@ pub async fn lookup_user(
 
     if let Some(detail_name) = detail {
         let query = format!("SELECT (unique_id,email,username,created)::users.composite_user FROM \"users\".\"basic\" WHERE \"{}\" = $1", detail_name);
-        sqlx::query_as(&query)
+        let user: Result<(User,), sqlx::Error> = sqlx::query_as(&query)
             .bind(value.unwrap())
             .fetch_one(&pool)
-            .await
-            .map_err(|_| error_landing("user not found", StatusCode::NOT_FOUND, "warn"))
-            .map(|u: (User,)| Json(u.0))
+            .await;
+
+        match user {
+            Ok(u) => Ok(Json(u.0)),
+            Err(_) => Err(error_landing(
+                "user not found",
+                StatusCode::NOT_FOUND,
+                "warning",
+            )),
+        }
     } else {
         Err(error_landing(
             "malformed request",

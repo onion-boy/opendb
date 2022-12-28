@@ -10,7 +10,7 @@ pub fn error_landing<T>(error: T, code: StatusCode, level: &str) -> (StatusCode,
     (code, scope!(level, "{}", error.to_string()))
 }
 
-pub fn default_error_landing<T>(error: T) -> (StatusCode, String)
-    where T: ToString {
-    (StatusCode::INTERNAL_SERVER_ERROR, scope!("fatal", "internal server error: {}", error.to_string()))
-}
+// pub fn default_error_landing<T>(error: T) -> (StatusCode, String)
+//     where T: ToString {
+//     (StatusCode::INTERNAL_SERVER_ERROR, scope!("fatal", "internal server error: {}", error.to_string()))
+// }

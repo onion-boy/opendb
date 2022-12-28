@@ -6,7 +6,7 @@ use dotenv::dotenv;
 use sqlx::postgres::PgPoolOptions;
 use tokio::signal;
 use std::net::SocketAddr;
-use routes::{fallbacks::unknown_landing, user::{create_new_user, lookup_user}};
+use routes::{fallbacks::unknown_landing, user::{create_new_user, lookup_user}, database::{lookup_database_by_owner}};
 
 async fn default_landing() -> impl IntoResponse {
     (StatusCode::OK, "no API path specificed")
@@ -46,18 +46,19 @@ async fn main() {
     let database_uri = std::env::var("DATABASE_URL")
         .expect("could not find database URI in .env file!");
 
-    let user_dbpool = PgPoolOptions::new()
+    let dbpool = PgPoolOptions::new()
         .max_connections(10)
         .connect(&database_uri)
         .await
         .expect("could not connect to postgres database!");
 
-    let user_routes = Router::new()
+    let routes = Router::new()
         .route("/users/new", post(create_new_user))
         .route("/users/lookup", get(lookup_user))
-        .with_state(user_dbpool);
+        .route("/databases/lookup", get(lookup_database_by_owner))
+        .with_state(dbpool);
 
-    let app = user_routes
+    let app = routes
         .fallback(unknown_landing)
         .route("/", get(default_landing));
 
