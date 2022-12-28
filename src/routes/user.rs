@@ -19,13 +19,13 @@ pub struct CreateUserForm {
 
 #[derive(Serialize)]
 pub struct UserId {
-    user_id: String,
+    unique_id: String,
 }
 
 #[derive(Serialize, sqlx::Type)]
 #[sqlx(type_name = "composite_user")]
 pub struct User {
-    user_id: String,
+    unique_id: String,
     email: String,
     username: String,
     created: NaiveDate,
@@ -35,17 +35,17 @@ pub struct User {
 pub struct LookupUserForm {
     username: Option<String>,
     email: Option<String>,
-    user_id: Option<String>,
+    id: Option<String>,
 }
 
 pub async fn create_new_user(
     State(pool): State<PgPool>,
     form: Form<CreateUserForm>,
 ) -> Result<Json<UserId>, (StatusCode, String)> {
-    let created = chrono::Utc::now().date_naive();
+    let created = chrono::Local::now().date_naive();
 
     let new_user = sqlx::query_as!(UserId,
-        "INSERT INTO \"users\".\"basic\" (full_name, email, username, created) VALUES ($1::varchar(256), $2::varchar(256), $3::varchar(15), $4::date) RETURNING \"user_id\"",
+        "INSERT INTO \"users\".\"basic\" (full_name, email, username, created) VALUES ($1::varchar(256), $2::varchar(256), $3::varchar(15), $4::date) RETURNING \"unique_id\"",
         form.full_name, form.email, form.username, created)
         .fetch_one(&pool)
         .await;
@@ -71,16 +71,16 @@ pub async fn lookup_user(
     } else if let Some(email) = query.email.clone() {
         detail = Some("email");
         Some(email)
-    } else if let Some(user_id) = query.user_id.clone() {
-        detail = Some("user_id");
-        Some(user_id)
+    } else if let Some(id) = query.id.clone() {
+        detail = Some("unique_id");
+        Some(id)
     } else {
         detail = None;
         None
     };
 
     if let Some(detail_name) = detail {
-        let query = format!("SELECT (user_id,email,username,created)::users.composite_user FROM \"users\".\"basic\" WHERE \"{}\" = $1", detail_name);
+        let query = format!("SELECT (unique_id,email,username,created)::users.composite_user FROM \"users\".\"basic\" WHERE \"{}\" = $1", detail_name);
         sqlx::query_as(&query)
             .bind(value.unwrap())
             .fetch_one(&pool)
