@@ -1,4 +1,4 @@
-use super::fallbacks::error_landing;
+use super::{fallbacks::error_landing, basic::HasUniqueId};
 use axum::{
     extract::{Query, State},
     http::StatusCode,
@@ -17,11 +17,6 @@ pub struct CreateUserForm {
     username: String,
 }
 
-#[derive(Serialize)]
-pub struct UserId {
-    unique_id: String,
-}
-
 #[derive(Serialize, sqlx::Type)]
 #[sqlx(type_name = "composite_user")]
 pub struct User {
@@ -34,17 +29,16 @@ pub struct User {
 #[derive(Deserialize)]
 pub struct LookupUserQuery {
     username: Option<String>,
-    email: Option<String>,
     id: Option<String>,
 }
 
 pub async fn create_new_user(
     State(pool): State<PgPool>,
     form: Form<CreateUserForm>,
-) -> Result<Json<UserId>, (StatusCode, String)> {
+) -> Result<Json<HasUniqueId>, (StatusCode, String)> {
     let created = chrono::Local::now().date_naive();
 
-    let new_user = sqlx::query_as!(UserId,
+    let new_user = sqlx::query_as!(HasUniqueId,
         "INSERT INTO \"users\".\"basic\" (full_name, email, username, created) VALUES ($1::varchar(256), $2::varchar(256), $3::varchar(15), $4::date) RETURNING \"unique_id\"",
         form.full_name, form.email, form.username, created)
         .fetch_one(&pool)
@@ -68,9 +62,6 @@ pub async fn lookup_user(
     let value = if let Some(username) = query.username.clone() {
         detail = Some("username");
         Some(username)
-    } else if let Some(email) = query.email.clone() {
-        detail = Some("email");
-        Some(email)
     } else if let Some(id) = query.id.clone() {
         detail = Some("unique_id");
         Some(id)
