@@ -29,7 +29,7 @@ pub struct User {
 #[derive(Deserialize)]
 pub struct LookupUserQuery {
     username: Option<String>,
-    id: Option<String>,
+    unique_id: Option<String>,
 }
 
 pub async fn create_new_user(
@@ -39,7 +39,7 @@ pub async fn create_new_user(
     let created = chrono::Local::now().date_naive();
 
     let new_user = sqlx::query_as!(HasUniqueId,
-        "INSERT INTO \"users\".\"basic\" (full_name, email, username, created) VALUES ($1::varchar(256), $2::varchar(256), $3::varchar(15), $4::date) RETURNING \"unique_id\"",
+        "INSERT INTO users.basic (full_name, email, username, created) VALUES ($1::varchar(256), $2::varchar(256), $3::varchar(15), $4::date) RETURNING unique_id",
         form.full_name, form.email, form.username, created)
         .fetch_one(&pool)
         .await;
@@ -58,20 +58,19 @@ pub async fn lookup_user(
     State(pool): State<PgPool>,
     query: Query<LookupUserQuery>,
 ) -> Result<Json<User>, (StatusCode, String)> {
-    let detail;
+    let mut detail = None;
     let value = if let Some(username) = query.username.clone() {
         detail = Some("username");
         Some(username)
-    } else if let Some(id) = query.id.clone() {
+    } else if let Some(unique_id) = query.unique_id.clone() {
         detail = Some("unique_id");
-        Some(id)
+        Some(unique_id)
     } else {
-        detail = None;
         None
     };
 
     if let Some(detail_name) = detail {
-        let query = format!("SELECT (unique_id,email,username,created)::users.composite_user FROM \"users\".\"basic\" WHERE \"{}\" = $1", detail_name);
+        let query = format!("SELECT (unique_id,email,username,created)::users.composite_user FROM users.basic WHERE {} = $1", detail_name);
         let user: Result<(User,), sqlx::Error> = sqlx::query_as(&query)
             .bind(value.unwrap())
             .fetch_one(&pool)

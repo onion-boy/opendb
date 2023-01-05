@@ -18,7 +18,7 @@ SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
 
-DROP DATABASE "openDB";
+DROP DATABASE IF EXISTS "openDB";
 --
 -- TOC entry 3339 (class 1262 OID 32833)
 -- Name: openDB; Type: DATABASE; Schema: -; Owner: openDB
@@ -83,7 +83,7 @@ ALTER TYPE databases.composite_database OWNER TO "openDB";
 --
 
 CREATE TYPE users.composite_user AS (
-	unique_id character varying(15),
+	unique_id character(15),
 	email character varying(256),
 	username character varying(256),
 	created date
@@ -119,7 +119,7 @@ CREATE FUNCTION users.alphanumeric(size integer DEFAULT 15) RETURNS text
     AS $$DECLARE
     str varchar(25);
 BEGIN
-    SELECT substr(md5(random()::text), 0, size) INTO str;
+    SELECT substr(md5(random()::text), 0, size + 1) INTO str;
     RETURN str;
 END;$$;
 
@@ -174,7 +174,7 @@ CREATE TABLE users.basic (
     username character varying(15) NOT NULL,
     created date NOT NULL,
     deleted date,
-    unique_id character varying(15) NOT NULL
+    unique_id character(15) NOT NULL
 );
 
 

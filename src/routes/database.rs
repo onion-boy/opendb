@@ -15,7 +15,8 @@ pub struct CreateDatabaseForm {
     user_id: String,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, sqlx::Type)]
+#[sqlx(type_name = "composite_database")]
 pub struct Database {
     name: String,
     created: NaiveDate,
@@ -24,8 +25,9 @@ pub struct Database {
 }
 
 #[derive(Deserialize)]
-pub struct LookupDatabaseByOwnerQuery {
+pub struct LookupDatabaseQuery {
     user_id: String,
+    unique_id: Option<String>
 }
 
 pub async fn create_database(
@@ -47,12 +49,16 @@ pub async fn create_database(
 }
 
 #[axum_macros::debug_handler]
-pub async fn lookup_database_by_owner(
+pub async fn lookup_database(
     State(pool): State<PgPool>,
-    query: Query<LookupDatabaseByOwnerQuery>,
+    query: Query<LookupDatabaseQuery>,
 ) -> Result<Json<Vec<Database>>, (StatusCode, String)> {
+    let mut append = "SELECT name, databases.basic.unique_id, users.basic.unique_id AS \"user_id\", databases.basic.created FROM databases.basic INNER JOIN users.basic ON user_id = users.basic.id AND users.basic.unique_id = $1::char(15)".to_string();
+    if let Some(unique_id) = query.unique_id {
+        append = format!("{}{}", append, " database.basic.unique_id = $2::char(15)")
+    }
     let results = sqlx::query_as!(Database,
-        "SELECT name, databases.basic.unique_id, users.basic.unique_id AS user_id, databases.basic.created FROM databases.basic INNER JOIN users.basic ON user_id = users.basic.id AND users.basic.unique_id = $1::varchar(15);",
+        ,
         query.user_id)
         .fetch_all(&pool)
         .await;
