@@ -1,13 +1,16 @@
 use axum::{
     extract::{Query, State},
     http::StatusCode,
-    Json, Form,
+    Form, Json,
 };
 use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 
-use super::{fallbacks::{error_landing, default_error_landing}, basic::HasUniqueId};
+use super::{
+    basic::HasUniqueId,
+    fallbacks::{default_error_landing, error_landing},
+};
 
 #[derive(Deserialize)]
 pub struct CreateDatabaseForm {
@@ -15,24 +18,24 @@ pub struct CreateDatabaseForm {
     user_id: String,
 }
 
-#[derive(Serialize, sqlx::Type)]
+#[derive(Serialize, sqlx::Type, Clone)]
 #[sqlx(type_name = "composite_database")]
 pub struct Database {
     name: String,
-    created: NaiveDate,
     unique_id: String,
     user_id: String,
+    created: NaiveDate,
 }
 
 #[derive(Deserialize)]
 pub struct LookupDatabaseQuery {
     user_id: String,
-    unique_id: Option<String>
+    unique_id: Option<String>,
 }
 
 pub async fn create_database(
     State(pool): State<PgPool>,
-    form: Form<CreateDatabaseForm>
+    form: Form<CreateDatabaseForm>,
 ) -> Result<Json<HasUniqueId>, (StatusCode, String)> {
     let created = chrono::Local::now().date_naive();
 
@@ -42,10 +45,10 @@ pub async fn create_database(
         .fetch_one(&pool)
         .await;
 
-        match new_db {
-            Ok(db) => Ok(Json(db)),
-            Err(e) => Err(default_error_landing(e)),
-        }
+    match new_db {
+        Ok(db) => Ok(Json(db)),
+        Err(e) => Err(default_error_landing(e)),
+    }
 }
 
 #[axum_macros::debug_handler]
@@ -53,19 +56,25 @@ pub async fn lookup_database(
     State(pool): State<PgPool>,
     query: Query<LookupDatabaseQuery>,
 ) -> Result<Json<Vec<Database>>, (StatusCode, String)> {
-    let mut append = "SELECT name, databases.basic.unique_id, users.basic.unique_id AS \"user_id\", databases.basic.created FROM databases.basic INNER JOIN users.basic ON user_id = users.basic.id AND users.basic.unique_id = $1::char(15)".to_string();
-    if let Some(unique_id) = query.unique_id {
-        append = format!("{}{}", append, " database.basic.unique_id = $2::char(15)")
+    let mut append = "SELECT (name, databases.basic.unique_id, users.basic.unique_id, databases.basic.created)::databases.composite_database FROM databases.basic INNER JOIN users.basic ON user_id = users.basic.id AND users.basic.unique_id = $1::char(15)".to_string();
+    if let Some(_) = &query.unique_id {
+        append = format!("{}{}", append, " AND databases.basic.unique_id = $2::char(15)")
     }
-    let results = sqlx::query_as!(Database,
-        ,
-        query.user_id)
-        .fetch_all(&pool)
-        .await;
+
+    let bound = sqlx::query_as(&append).bind(&query.user_id);
+    let double_bound = if let Some(unique_id) = &query.unique_id {
+        Some(bound.bind(unique_id))
+    } else {
+        Some(bound)
+    };
+
+    let results: Result<Vec<(Database,)>, sqlx::Error> = double_bound.unwrap().fetch_all(&pool).await;
 
     match results {
-        Ok(databases) => Ok(Json(databases)),
-        Err(_) => Err(error_landing(
+        Ok(databases) => Ok(Json(
+            databases.iter().map(|db| db.clone().0).collect::<Vec<Database>>(),
+        )),
+        Err(e) => Err(error_landing(
             "could not locate databases",
             StatusCode::NOT_FOUND,
             "warning",
